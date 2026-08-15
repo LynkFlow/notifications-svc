@@ -1,6 +1,15 @@
 import { errorHandler, notFoundHandler } from "./errorHandler.js";
 import AppError from "../errors/AppError.js";
+import { ValidationError } from "../errors/ValidationErrors.js";
 import type { NextFunction, Request, Response } from "express";
+
+// A generic example error carrying array-shaped `details`, to exercise
+// that half of AppError.toApiError() without depending on a real domain
+// error's exact code.
+class TestErrorWithDetails extends AppError {
+  readonly statusCode = 422;
+  readonly code = "TEST_ERROR_WITH_DETAILS";
+}
 
 interface MockResponse {
   headersSent: boolean;
@@ -41,11 +50,9 @@ describe("notFoundHandler", () => {
 });
 
 describe("errorHandler", () => {
-  it("routes an array-shaped AppError.details onto ApiError.details", () => {
+  it("routes an AppError's array-shaped details onto ApiError.details via toApiError()", () => {
     const res = mockResponse();
-    const error = new AppError(422, "EMAIL_TEMPLATE_INVALID", "Bad template.", [
-      "Must define a subject.",
-    ]);
+    const error = new TestErrorWithDetails("Bad template.", ["Must define a subject."]);
 
     errorHandler(error, {} as Request, asResponse(res), jest.fn());
 
@@ -53,7 +60,7 @@ describe("errorHandler", () => {
     expect(res.json).toHaveBeenCalledWith({
       success: false,
       error: {
-        code: "EMAIL_TEMPLATE_INVALID",
+        code: "TEST_ERROR_WITH_DETAILS",
         status: 422,
         message: "Bad template.",
         details: ["Must define a subject."],
@@ -61,11 +68,9 @@ describe("errorHandler", () => {
     });
   });
 
-  it("routes a field-keyed AppError.details onto ApiError.fieldErrors", () => {
+  it("routes a ValidationError's field-keyed errors onto ApiError.fieldErrors via toApiError()", () => {
     const res = mockResponse();
-    const error = new AppError(400, "VALIDATION_ERROR", "The request is invalid.", {
-      "to.0.email": "Invalid email format.",
-    });
+    const error = new ValidationError({ "to.0.email": "Invalid email format." });
 
     errorHandler(error, {} as Request, asResponse(res), jest.fn());
 
@@ -120,16 +125,15 @@ describe("errorHandler", () => {
 
   it("falls back to a 500 INTERNAL_SERVER_ERROR for anything unrecognized", () => {
     const res = mockResponse();
-    const consoleError = jest
-      .spyOn(console, "error")
-      .mockImplementation(() => undefined);
+    const logError = jest.fn();
+    const req = {
+      method: "GET",
+      originalUrl: "/x",
+      log: { error: logError },
+    } as unknown as Request;
+    const error = new Error("unexpected");
 
-    errorHandler(
-      new Error("unexpected"),
-      { method: "GET", originalUrl: "/x" } as Request,
-      asResponse(res),
-      jest.fn(),
-    );
+    errorHandler(error, req, asResponse(res), jest.fn());
 
     expect(res.status).toHaveBeenCalledWith(500);
     expect(res.json).toHaveBeenCalledWith({
@@ -140,6 +144,9 @@ describe("errorHandler", () => {
         message: "An unexpected error occurred.",
       },
     });
-    consoleError.mockRestore();
+    expect(logError).toHaveBeenCalledWith(
+      { method: "GET", path: "/x", err: error },
+      "unhandled request error",
+    );
   });
 });

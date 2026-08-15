@@ -1,4 +1,5 @@
 import AppError from "../errors/AppError.js";
+import { TemplateVariableMissingError } from "../errors/EmailTemplateErrors.js";
 import type { EmailTemplate } from "../models/email.js";
 import { renderEmailTemplate } from "./templateRenderer.js";
 
@@ -71,6 +72,6 @@ describe("renderEmailTemplate", () => {
   });
 
   it("throws AppError instances specifically, not just error-shaped objects", () => {
-    expect(() => renderEmailTemplate(template, {})).toThrow(AppError);
+    expect(() => renderEmailTemplate(template, {})).toThrow(TemplateVariableMissingError);
   });
 });

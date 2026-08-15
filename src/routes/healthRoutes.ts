@@ -1,9 +1,9 @@
-import express from "express";
-import { liveness, readiness } from "../controllers/healthController.js";
+import express, { type Router } from "express";
+import type { HealthController } from "../controllers/HealthController.js";
 
-const router = express.Router();
-
-router.get("/live", liveness);
-router.get("/ready", readiness);
-
-export default router;
+export function createHealthRoutes(healthController: HealthController): Router {
+  const router = express.Router();
+  router.get("/live", healthController.liveness);
+  router.get("/ready", healthController.readiness);
+  return router;
+}

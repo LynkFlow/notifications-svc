@@ -34,7 +34,7 @@ describe("validate", () => {
     expect(error).toBeInstanceOf(AppError);
     expect(error.statusCode).toBe(400);
     expect(error.code).toBe("VALIDATION_ERROR");
-    expect(error.details).toEqual({
+    expect(error.fieldErrors).toEqual({
       email: "Email is required.",
       password: "Password is required.",
     });

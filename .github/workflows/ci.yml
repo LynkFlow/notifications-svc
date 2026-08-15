@@ -18,8 +18,8 @@ name: CI
 # src/validators/sendEmailValidator.test.ts, src/services/templateRenderer.test.ts,
 # src/middleware/validate.test.ts, src/middleware/errorHandler.test.ts, and
 # src/errors/AppError.test.ts all test pure logic with no real Postgres or
-# SMTP connection. The email-sending path itself (emailService.ts,
-# smtpTransport.ts, emailSendAttemptRepository.ts, emailTemplateRepository.ts)
+# SMTP connection. The email-sending path itself (EmailService.ts,
+# smtpTransport.ts, EmailSendAttemptRepository.ts, EmailTemplateRepository.ts)
 # has no unit test coverage yet -- it needs a live Postgres connection and a
 # mocked/fake SMTP transport to test meaningfully, which is a real gap, not
 # addressed by this migration. Add a `services: postgres:` block here (and a

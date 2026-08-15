@@ -1,4 +1,7 @@
-import AppError from "../errors/AppError.js";
+import {
+  TemplateRenderFailedError,
+  TemplateVariableMissingError,
+} from "../errors/EmailTemplateErrors.js";
 import type {
   EmailTemplate,
   RenderedEmail,
@@ -25,11 +28,7 @@ function render(
     placeholderPattern,
     (_placeholder: string, variableName: string) => {
       if (!Object.hasOwn(variables, variableName)) {
-        throw new AppError(
-          422,
-          "TEMPLATE_VARIABLE_MISSING",
-          `Required template variable is missing: ${variableName}.`,
-        );
+        throw new TemplateVariableMissingError(variableName);
       }
 
       const value = String(variables[variableName]);
@@ -38,11 +37,7 @@ function render(
   );
 
   if (/{{|}}/.test(rendered)) {
-    throw new AppError(
-      422,
-      "TEMPLATE_RENDER_FAILED",
-      "The email template contains an invalid placeholder.",
-    );
+    throw new TemplateRenderFailedError("The email template contains an invalid placeholder.");
   }
 
   return rendered;
@@ -54,21 +49,13 @@ export function renderEmailTemplate(
 ): RenderedEmail {
   for (const variableName of template.requiredVariables) {
     if (!Object.hasOwn(variables, variableName)) {
-      throw new AppError(
-        422,
-        "TEMPLATE_VARIABLE_MISSING",
-        `Required template variable is missing: ${variableName}.`,
-      );
+      throw new TemplateVariableMissingError(variableName);
     }
   }
 
   const subject = render(template.subjectTemplate, variables, false).trim();
   if (subject.length === 0 || subject.length > 998 || /[\r\n]/.test(subject)) {
-    throw new AppError(
-      422,
-      "TEMPLATE_RENDER_FAILED",
-      "The rendered email subject is invalid.",
-    );
+    throw new TemplateRenderFailedError("The rendered email subject is invalid.");
   }
 
   const rendered: RenderedEmail = { subject };

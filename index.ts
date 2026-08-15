@@ -1,6 +1,7 @@
 import app from "./app.js";
 import config from "./src/config/env.js";
 import pool from "./src/db/pool.js";
+import logger from "./src/logging/logger.js";
 import smtpTransport from "./src/services/smtpTransport.js";
 
 async function start(): Promise<void> {
@@ -9,7 +10,7 @@ async function start(): Promise<void> {
   await pool.query("SELECT 1");
 
   const server = app.listen(config.port, () => {
-    console.log(`${config.serviceName} running on port ${config.port}`);
+    logger.info({ port: config.port }, `${config.serviceName} running`);
   });
 
   let isShuttingDown = false;
@@ -20,7 +21,7 @@ async function start(): Promise<void> {
     }
 
     isShuttingDown = true;
-    console.log(`${signal} received. Shutting down gracefully.`);
+    logger.info({ signal }, "shutting down gracefully");
 
     server.close((error?: Error) => {
       // server.close()'s callback must stay synchronous (Node expects
@@ -31,7 +32,7 @@ async function start(): Promise<void> {
         await pool.end();
 
         if (error) {
-          console.error("HTTP server shutdown failed.", error);
+          logger.error({ err: error }, "HTTP server shutdown failed");
           process.exitCode = 1;
         }
       })();
@@ -43,9 +44,7 @@ async function start(): Promise<void> {
 }
 
 start().catch(async (error: unknown) => {
-  console.error("Application startup failed.", {
-    message: error instanceof Error ? error.message : "Unknown error",
-  });
+  logger.error({ err: error }, "application startup failed");
   smtpTransport.close();
   await pool.end();
   process.exitCode = 1;

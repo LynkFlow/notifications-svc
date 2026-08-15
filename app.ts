@@ -2,17 +2,24 @@ import cors from "cors";
 import express from "express";
 import helmet from "helmet";
 import config from "./src/config/env.js";
-import healthRoutes from "./src/routes/healthRoutes.js";
-import emailRoutes from "./src/routes/emailRoutes.js";
+import { API_VERSION } from "./src/config/apiVersion.js";
+import { requestContext } from "./src/middleware/requestContext.js";
+import { createHealthRoutes } from "./src/routes/healthRoutes.js";
+import { createEmailRoutes } from "./src/routes/emailRoutes.js";
+import { buildContainer } from "./src/container.js";
 import { errorHandler, notFoundHandler } from "./src/middleware/errorHandler.js";
 
 const app = express();
+const container = buildContainer();
 
 if (config.trustProxy !== false) {
   app.set("trust proxy", config.trustProxy);
 }
 
 app.disable("x-powered-by");
+// Mounted first -- every other middleware/handler relies on req.log
+// already existing (backend-conventions.md's "Logging: pino").
+app.use(requestContext);
 app.use(
   cors({
     origin: config.corsOrigins,
@@ -29,8 +36,8 @@ app.get("/", (_req, res) => {
   });
 });
 
-app.use("/health", healthRoutes);
-app.use("/api/v1/emails", emailRoutes);
+app.use("/health", createHealthRoutes(container.healthController));
+app.use(`/api/${API_VERSION}/emails`, createEmailRoutes(container.emailController));
 
 app.use(notFoundHandler);
 app.use(errorHandler);
