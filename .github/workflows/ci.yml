@@ -1,0 +1,62 @@
+name: CI
+
+# @lynkflow/config and @lynkflow/types are real, published registry
+# dependencies. GitHub Packages has no anonymous install path, so the
+# Install step below sets LYNKFLOW_NPM_TOKEN -- .npmrc references it as
+# ${LYNKFLOW_NPM_TOKEN}, and without this env var that reference resolves
+# to nothing, producing a 401 regardless of whether the underlying secret's
+# token value is valid. This exact gap bit lynkflow-ui-kit/lynkflow-types
+# on 15 Aug 2026 (see .claude/rules/ci-cd.md) -- baked in correctly here
+# from the start instead of being discovered the same way again.
+#
+# Requires a repo secret: CROSS_REPO_PAT -- a classic PAT with `read:packages`
+# scope. Add it under Settings -> Secrets and variables -> Actions.
+#
+# No database service container: every test in this suite is DB/SMTP
+# -independent by design -- test/app.test.ts only reaches the health/live
+# check and validation-before-dependency-access paths, and
+# src/validators/sendEmailValidator.test.ts, src/services/templateRenderer.test.ts,
+# src/middleware/validate.test.ts, src/middleware/errorHandler.test.ts, and
+# src/errors/AppError.test.ts all test pure logic with no real Postgres or
+# SMTP connection. The email-sending path itself (emailService.ts,
+# smtpTransport.ts, emailSendAttemptRepository.ts, emailTemplateRepository.ts)
+# has no unit test coverage yet -- it needs a live Postgres connection and a
+# mocked/fake SMTP transport to test meaningfully, which is a real gap, not
+# addressed by this migration. Add a `services: postgres:` block here (and a
+# corresponding DATABASE_URL / migration step) if/when that coverage is added.
+
+on:
+  push:
+    branches: [main, develop, "release/**", "hotfix/**"]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js (from .nvmrc)
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm"
+
+      - name: Install
+        run: npm install
+        env:
+          LYNKFLOW_NPM_TOKEN: ${{ secrets.CROSS_REPO_PAT }}
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build

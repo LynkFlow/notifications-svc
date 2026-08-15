@@ -1,10 +1,9 @@
 declare global {
-    namespace Express {
-        interface Request {
-            validatedBody?: unknown;
-        }
+  namespace Express {
+    interface Request {
+      validatedBody?: unknown;
     }
+  }
 }
 
 export {};
-

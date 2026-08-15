@@ -5,6 +5,14 @@ PostgreSQL, and Zod service template. Email content is selected by template code
 rendered with caller-provided variables, and delivered through a configurable
 SMTP relay such as Brevo.
 
+Wired to the platform's shared tooling: TypeScript pinned to 6.0.x, ESM
+(`"type": "module"` -- every relative import needs an explicit `.js`
+extension, even though the source is `.ts`), `@lynkflow/config` for
+ESLint/Prettier/the base tsconfig, Jest (via `@lynkflow/config/jest/node`,
+transformed with Babel, not `ts-jest` -- see `tooling.md`/`testing.md` at the
+workspace root) instead of Node's native test runner, and `@lynkflow/types`'
+generic `ApiError` shape for every error response (see `errorHandler.ts`).
+
 ## Endpoints
 
 - `POST /api/v1/emails/send` renders and sends one templated email request.
@@ -126,16 +134,19 @@ npm run db:migrate
 npm run dev
 ```
 
-The migration runner applies immutable SQL files in lexical order and validates
-their SHA-256 checksums. Do not edit an applied migration; add a new sequential
-migration.
+`npm install` needs `LYNKFLOW_NPM_TOKEN` set -- see `.npmrc` and the workspace
+root's `publishing.md`. The migration runner applies immutable SQL files in
+lexical order and validates their SHA-256 checksums. Do not edit an applied
+migration; add a new sequential migration.
 
 ## Commands
 
-- `npm run typecheck` checks application and test TypeScript.
-- `npm run build` emits production JavaScript to `dist/`.
+- `npm run typecheck` checks application and test TypeScript (`tsc -p tsconfig.json`, no emit).
+- `npm run build` emits production JavaScript to `dist/` (`tsc -p tsconfig.build.json`).
 - `npm start` runs the production build.
-- `npm test` compiles and runs database-independent tests.
+- `npm test` runs the Jest suite (Babel-transformed, no separate compile step); every test is database/SMTP-independent.
+- `npm run lint` / `npm run lint:fix` run ESLint (`@lynkflow/config/eslint/node`).
+- `npm run format` / `npm run format:check` run Prettier.
 - `npm run check` runs type checking and tests.
 - `npm run db:migrate` builds and applies pending migrations.
 
